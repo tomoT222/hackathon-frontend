@@ -1,10 +1,44 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useItem } from '../features/items/api/useItems';
+import { useAuth } from '../features/auth/api/useAuth';
 import './ItemDetail.css';
+
+const API_HOST = 'http://localhost:8080';
 
 export const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { item, isLoading, error } = useItem(id);
+  const { userId } = useAuth();
+  const navigate = useNavigate();
+
+  const handlePurchase = async () => {
+    if (!userId) {
+      alert('Please login to purchase');
+      navigate('/login');
+      return;
+    }
+    if (!confirm('Are you sure you want to purchase this item?')) return;
+
+    try {
+      const response = await fetch(`${API_HOST}/items/${id}/buy`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Purchase failed');
+      }
+
+      alert('Purchase successful!');
+      navigate('/');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to purchase item');
+    }
+  };
 
   if (isLoading) return <div className="loading">Loading...</div>;
   if (error) return <div className="error">Failed to load item info.</div>;
@@ -22,7 +56,11 @@ export const ItemDetail = () => {
             <h3>Description</h3>
             <p>{item.description}</p>
           </div>
-          <button className="buy-button" disabled={item.status === 'sold'}>
+          <button 
+            className="buy-button" 
+            disabled={item.status === 'sold'}
+            onClick={handlePurchase}
+          >
             {item.status === 'sold' ? 'SOLD OUT' : '購入する'}
           </button>
         </div>

@@ -16,6 +16,11 @@
     font-size: 1.8rem;
 }
 
+.header-actions {
+    display: flex;
+    gap: 12px;
+}
+
 .sell-button {
     background-color: #ff3333;
     color: white;
@@ -23,6 +28,25 @@
     padding: 10px 20px;
     border-radius: 4px;
     font-weight: bold;
+    cursor: pointer;
+}
+
+.login-button {
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.logout-button {
+    background-color: transparent;
+    color: #666;
+    border: 1px solid #ccc;
+    padding: 10px 20px;
+    border-radius: 4px;
     cursor: pointer;
 }
 

@@ -1,9 +1,13 @@
+import { useNavigate } from 'react-router-dom';
 import { useItems } from '../features/items/api/useItems';
 import { ItemCard } from '../features/items/components/ItemCard';
+import { useAuth } from '../features/auth/api/useAuth';
 import './HomePage.css';
 
 export const HomePage = () => {
   const { items, isLoading, error } = useItems();
+  const { userId, logout } = useAuth();
+  const navigate = useNavigate();
 
   if (isLoading) return <div className="loading">Loading...</div>;
   if (error) return <div className="error">Failed to load items.</div>;
@@ -12,7 +16,16 @@ export const HomePage = () => {
     <div className="home-page">
       <header className="home-header">
         <h1>Merchackathon</h1>
-        <button className="sell-button">出品する</button>
+        <div className="header-actions">
+          {userId ? (
+            <>
+              <button className="sell-button" onClick={() => navigate('/sell')}>出品する</button>
+              <button className="logout-button" onClick={logout}>Logout</button>
+            </>
+          ) : (
+            <button className="login-button" onClick={() => navigate('/login')}>Login / Register</button>
+          )}
+        </div>
       </header>
       <div className="item-grid">
         {items?.map((item) => (
