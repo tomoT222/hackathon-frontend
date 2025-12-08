@@ -1,42 +1,17 @@
-
-import { useEffect, useState } from 'react'
-import './App.css'
-
-type HealthResponse = {
-  message: string;
-}
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HomePage } from './pages/HomePage';
+import { ItemDetail } from './pages/ItemDetail';
+import './App.css';
 
 function App() {
-  const [message, setMessage] = useState<string>('')
-
-  useEffect(() => {
-    const fetchHealth = async () => {
-      try {
-        const response = await fetch('http://localhost:8080/health');
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const data: HealthResponse = await response.json();
-        setMessage(data.message);
-      } catch (error) {
-        console.error('Error fetching health:', error);
-        setMessage('Error connecting to backend');
-      }
-    };
-
-    fetchHealth();
-  }, [])
-
   return (
-    <>
-      <h1>Frontend Meets Backend</h1>
-      <div className="card">
-        <p>
-          Backend says: <strong>{message}</strong>
-        </p>
-      </div>
-    </>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/items/:id" element={<ItemDetail />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App
