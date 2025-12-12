@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '../../auth/api/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../../../config';
 import './SellItemForm.css';
 
-const API_HOST = 'http://localhost:8080';
+const API_HOST = API_URL;
 
 export const SellItemForm = () => {
   const { userId } = useAuth();

@@ -1,9 +1,10 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useItem } from '../features/items/api/useItems';
 import { useAuth } from '../features/auth/api/useAuth';
+import { API_URL } from '../config';
 import './ItemDetail.css';
 
-const API_HOST = 'http://localhost:8080';
+const API_HOST = API_URL;
 
 export const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();

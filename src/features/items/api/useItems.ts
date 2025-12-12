@@ -1,8 +1,9 @@
 import useSWR from 'swr';
 import { fetcher } from '../../../lib/fetcher';
+import { API_URL } from '../../../config';
 import type { Item } from '../types';
 
-const API_HOST = 'http://localhost:8080';
+const API_HOST = API_URL;
 
 export const useItems = () => {
   const { data, error, isLoading } = useSWR<Item[]>(`${API_HOST}/items`, fetcher);

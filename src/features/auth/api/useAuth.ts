@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { API_URL } from '../../../config';
 
-const API_HOST = 'http://localhost:8080';
+const API_HOST = API_URL;
 
 export type User = {
   id: string;
