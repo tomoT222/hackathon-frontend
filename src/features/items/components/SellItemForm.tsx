@@ -12,6 +12,8 @@ export const SellItemForm = () => {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
+  const [aiNegotiationEnabled, setAiNegotiationEnabled] = useState(false);
+  const [minPrice, setMinPrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,17 +25,23 @@ export const SellItemForm = () => {
 
     setIsSubmitting(true);
     try {
+      const payload: any = {
+        name,
+        price: parseInt(price),
+        description,
+        user_id: userId,
+        ai_negotiation_enabled: aiNegotiationEnabled,
+      };
+      if (minPrice) {
+        payload.min_price = parseInt(minPrice);
+      }
+
       const response = await fetch(`${API_HOST}/items`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name,
-          price: parseInt(price),
-          description,
-          user_id: userId,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -85,6 +93,32 @@ export const SellItemForm = () => {
           rows={5}
         />
       </div>
+
+      <div className="form-group checkbox-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={aiNegotiationEnabled}
+            onChange={(e) => setAiNegotiationEnabled(e.target.checked)}
+          />
+          AI交渉機能を利用する (Smart-Nego)
+        </label>
+      </div>
+
+      {aiNegotiationEnabled && (
+        <div className="form-group">
+          <label htmlFor="minPrice">最低許容価格 (オプション)</label>
+          <input
+            id="minPrice"
+            type="number"
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value)}
+            placeholder="未入力の場合、自動で判断します"
+          />
+          <small>AIがこれ以下の価格での交渉を拒否します。</small>
+        </div>
+      )}
+
       <button type="submit" className="submit-button" disabled={isSubmitting}>
         {isSubmitting ? '出品中...' : '出品する'}
       </button>
