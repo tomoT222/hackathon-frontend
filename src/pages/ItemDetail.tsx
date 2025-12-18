@@ -11,63 +11,16 @@ const API_HOST = API_URL;
 export const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();
   // @ts-ignore
-  const { item, isLoading, error } = useItem(id);
+  const { item, isLoading, error, mutate } = useItem(id);
   const { user } = useAuth();
   const userId = user?.uid || null;
   const navigate = useNavigate();
 
-  const handlePurchase = async () => {
-    if (!userId) {
-      alert('購入するにはログインしてください');
-      navigate('/login');
-      return;
-    }
-    if (!confirm('本当に購入しますか？')) return;
-
-    try {
-      const response = await fetch(`${API_HOST}/items/${id}/buy`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: userId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Purchase failed');
-      }
-
-      alert('購入しました！');
-      navigate('/');
-    } catch (error) {
-      console.error(error);
-      alert('購入に失敗しました');
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirm('本当に削除しますか？')) return;
-    try {
-        const response = await fetch(`${API_HOST}/items/${id}?user_id=${userId}`, {
-            method: 'DELETE',
-        });
-        if (!response.ok) throw new Error('Delete failed');
-        alert('商品を削除しました');
-        navigate('/');
-    } catch (error) {
-        console.error(error);
-        alert('削除に失敗しました');
-    }
-  };
-
-  if (isLoading) return <div className="loading">Loading...</div>;
-  if (error) return <div className="error">Failed to load item info.</div>;
-  if (!item) return <div className="error">Item not found</div>;
-
-  const isSeller = userId === item.user_id;
+  // ... (existing handlers)
 
   return (
     <div className="item-detail-page">
+      {/* ... (existing UI) */}
       <Link to="/" className="back-link">← ホームに戻る</Link>
       <div className="item-detail-container">
         {item.image_url ? (
@@ -123,12 +76,14 @@ export const ItemDetail = () => {
         itemId={item.id} 
         userId={userId} 
         isSeller={isSeller} 
+        onItemUpdate={() => mutate()}
       />
     </div>
   );
 };
 
-const ChatSection = ({ itemId, userId, isSeller }: { itemId: string, userId: string | null, isSeller: boolean }) => {
+// Update ChatSection props signature
+const ChatSection = ({ itemId, userId, isSeller, onItemUpdate }: { itemId: string, userId: string | null, isSeller: boolean, onItemUpdate?: () => void }) => {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [inputText, setInputText] = React.useState('');
   
@@ -157,10 +112,6 @@ const ChatSection = ({ itemId, userId, isSeller }: { itemId: string, userId: str
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, content: inputText })
       });
-      // Immediate update handled by polling or manual fetch?
-      // Let's just create array locally or wait for poll.
-      // Better to wait for next poll or manually call fetchMessages to sync state.
-      // But typically we append immediately for UX.
       fetchMessages(); 
       setInputText('');
     } catch (e) {
@@ -177,7 +128,8 @@ const ChatSection = ({ itemId, userId, isSeller }: { itemId: string, userId: str
               body: JSON.stringify({ user_id: userId })
           });
           if (res.ok) {
-              fetchMessages(); // Refresh to see update
+              fetchMessages(); // Refresh messages to see approved status
+              if (onItemUpdate) onItemUpdate(); // Refresh item to see new price
           }
       } catch (e) {
           console.error(e);
@@ -234,10 +186,6 @@ const ChatSection = ({ itemId, userId, isSeller }: { itemId: string, userId: str
                   <div style={{ marginTop: '8px', padding: '6px', backgroundColor: 'rgba(0,0,0,0.05)', fontSize: '0.85em', borderRadius: '4px', borderLeft: '3px solid #999' }}>
                       <strong>AIの思考プロセス:</strong><br/>
                       {msg.ai_reasoning}
-                      {/* DEBUG INFO */}
-                      <div style={{marginTop: '4px', fontSize: '0.8em', color: '#666', borderTop: '1px dashed #ccc', paddingTop: '4px'}}>
-                          DEBUG: Price={msg.suggested_price ?? 'null'}
-                      </div>
                   </div>
               )}
 

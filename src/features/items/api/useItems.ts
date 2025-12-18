@@ -16,11 +16,12 @@ export const useItems = () => {
 };
 
 export const useItem = (id: string | undefined) => {
-  const { data, error, isLoading } = useSWR<Item>(id ? `${API_HOST}/items/${id}` : null, fetcher);
+  const { data, error, isLoading, mutate } = useSWR<Item>(id ? `${API_HOST}/items/${id}` : null, fetcher);
 
   return {
     item: data,
     isLoading,
     error,
+    mutate,
   };
 };
