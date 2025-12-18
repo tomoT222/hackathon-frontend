@@ -2,20 +2,26 @@ import { useState } from 'react';
 import { useAuth } from '../../auth/api/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../../../config';
+import type { Item } from '../../items/types';
 import './SellItemForm.css';
 
 const API_HOST = API_URL;
 
-export const SellItemForm = () => {
+type Props = {
+  initialData?: Item;
+};
+
+export const SellItemForm = ({ initialData }: Props) => {
   const { user } = useAuth();
   const userId = user?.uid;
   const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const [description, setDescription] = useState('');
-  const [aiNegotiationEnabled, setAiNegotiationEnabled] = useState(false);
-  const [minPrice, setMinPrice] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+
+  const [name, setName] = useState(initialData?.name || '');
+  const [price, setPrice] = useState(initialData?.price.toString() || '');
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [aiNegotiationEnabled, setAiNegotiationEnabled] = useState(initialData?.ai_negotiation_enabled || false);
+  const [minPrice, setMinPrice] = useState(initialData?.min_price?.toString() || '');
+  const [imageUrl, setImageUrl] = useState(initialData?.image_url || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,7 +60,7 @@ export const SellItemForm = () => {
         name,
         price: parseInt(price),
         description,
-        user_id: userId,
+        user_id: userId, // Keep owner for verification
         ai_negotiation_enabled: aiNegotiationEnabled,
         image_url: imageUrl,
       };
@@ -62,8 +68,11 @@ export const SellItemForm = () => {
         payload.min_price = parseInt(minPrice);
       }
 
-      const response = await fetch(`${API_HOST}/items`, {
-        method: 'POST',
+      const method = initialData ? 'PUT' : 'POST';
+      const url = initialData ? `${API_HOST}/items/${initialData.id}` : `${API_HOST}/items`;
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -71,13 +80,13 @@ export const SellItemForm = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create item');
+        throw new Error('Failed to save item');
       }
 
-      navigate('/');
+      navigate(initialData ? `/items/${initialData.id}` : '/');
     } catch (error) {
       console.error(error);
-      alert('出品に失敗しました');
+      alert(initialData ? '更新に失敗しました' : '出品に失敗しました');
     } finally {
       setIsSubmitting(false);
     }
@@ -143,26 +152,32 @@ export const SellItemForm = () => {
             checked={aiNegotiationEnabled}
             onChange={(e) => setAiNegotiationEnabled(e.target.checked)}
           />
-          AI交渉機能を利用する (Smart-Nego)
+          AIによる価格交渉を有効にする
         </label>
       </div>
 
       {aiNegotiationEnabled && (
         <div className="form-group">
-          <label htmlFor="minPrice">最低許容価格 (オプション)</label>
+          <label htmlFor="minPrice">最低許容価格 (円)</label>
           <input
             id="minPrice"
             type="number"
             value={minPrice}
             onChange={(e) => setMinPrice(e.target.value)}
-            placeholder="未入力の場合、自動で判断します"
+            min="1"
+            style={{ borderColor: (minPrice && price && parseInt(minPrice) > parseInt(price)) ? 'red' : undefined }}
           />
-          <small>AIがこれ以下の価格での交渉を拒否します。</small>
+          {(minPrice && price && parseInt(minPrice) > parseInt(price)) && (
+              <div style={{color: 'red', fontSize: '0.9em', marginTop: '4px'}}>
+                  販売価格より高い価格は設定できません
+              </div>
+          )}
+          <small>AIはこの価格を下回らない範囲で交渉します</small>
         </div>
       )}
 
       <button type="submit" className="submit-button" disabled={isSubmitting}>
-        {isSubmitting ? '出品中...' : '出品する'}
+        {isSubmitting ? '送信中...' : (initialData ? '更新する' : '出品する')}
       </button>
     </form>
   );

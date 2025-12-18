@@ -92,14 +92,21 @@ export const ItemDetail = () => {
           </div>
           
           {isSeller ? (
-              <button 
-                className="delete-button"
-                onClick={handleDelete}
-                style={{ backgroundColor: '#ff4444', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                disabled={item.status !== 'on_sale'}
-              >
-                  削除する
-              </button>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button 
+                    onClick={() => navigate(`/items/${item.id}/edit`)}
+                    style={{ backgroundColor: '#2196f3', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                      編集する
+                  </button>
+                  <button 
+                    onClick={handleDelete}
+                    style={{ backgroundColor: '#ff4444', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    disabled={item.status !== 'on_sale'}
+                  >
+                      削除する
+                  </button>
+              </div>
           ) : (
               <button 
                 className="buy-button" 
@@ -177,53 +184,81 @@ const ChatSection = ({ itemId, userId, isSeller }: { itemId: string, userId: str
       }
   };
 
+  const handleReject = async (msgId: string) => {
+    if (!userId) return;
+    if (!confirm('このAI提案を却下しますか？')) return;
+    try {
+        const res = await fetch(`${API_HOST}/messages/${msgId}/reject`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        if (res.ok) {
+            fetchMessages(); // Refresh to see update
+        }
+    } catch (e) {
+        console.error(e);
+    }
+  };
+
   return (
     <div className="chat-section" style={{ marginTop: '40px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
       <h3>AI価格交渉チャット {isSeller && <span style={{fontSize: '0.8em', color: 'green'}}>(出品者モード)</span>}</h3>
+      {!userId && <div style={{padding: '10px', backgroundColor: '#f0f0f0', marginBottom: '10px', borderRadius: '4px'}}>チャット機能を利用するにはログインしてください。</div>}
+      
       <div className="messages-list" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #ddd', padding: '10px', marginBottom: '10px' }}>
         {messages.map(msg => (
           <div key={msg.id} style={{ 
-            textAlign: msg.sender_id === userId ? 'right' : 'left',
-            margin: '8px 0',
-            clear: 'both'
+            marginBottom: '10px', 
+            textAlign: (userId && msg.sender_id === userId) ? 'right' : 'left',
+            backgroundColor: msg.is_ai_response && !msg.is_approved ? '#FFF3E0' : 'transparent',
+            padding: '5px'
           }}>
-            <div style={{ 
-              display: 'inline-block', 
-              padding: '10px 14px', 
-              borderRadius: '12px',
-              backgroundColor: msg.is_ai_response ? (msg.is_approved ? '#e3f2fd' : '#fff3e0') : (msg.sender_id === userId ? '#dcf8c6' : '#f0f0f0'),
-              border: msg.is_ai_response ? (msg.is_approved ? '1px solid #2196f3' : '1px dashed #ff9800') : 'none',
-              maxWidth: '70%',
-              textAlign: 'left'
-            }}>
+              <div style={{ 
+                display: 'inline-block', 
+                padding: '8px 12px', 
+                borderRadius: '12px', 
+                backgroundColor: (userId && msg.sender_id === userId) ? '#e3f2fd' : '#f5f5f5',
+                maxWidth: '80%'
+              }}>
               {msg.is_ai_response && (
                   <div style={{fontSize: '0.8em', color: msg.is_approved ? '#2196f3' : '#ff9800', fontWeight: 'bold', marginBottom: '4px'}}>
                       {msg.is_approved ? '🤖 AIエージェント (承認済み)' : '🤖 AIエージェント (下書き)'}
                   </div>
               )}
               
-              <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
-
+              {msg.content}
+              
               {/* Show Reasoning for Seller */}
               {isSeller && msg.ai_reasoning && (
                   <div style={{ marginTop: '8px', padding: '6px', backgroundColor: 'rgba(0,0,0,0.05)', fontSize: '0.85em', borderRadius: '4px', borderLeft: '3px solid #999' }}>
                       <strong>AIの思考プロセス:</strong><br/>
                       {msg.ai_reasoning}
+                      {/* DEBUG INFO */}
+                      <div style={{marginTop: '4px', fontSize: '0.8em', color: '#666', borderTop: '1px dashed #ccc', paddingTop: '4px'}}>
+                          DEBUG: Price={msg.suggested_price ?? 'null'}
+                      </div>
                   </div>
               )}
 
-              {/* Show Approve Button for Unapproved Drafts (Seller only) */}
-              {isSeller && !msg.is_approved && msg.is_ai_response && (
-                  <div style={{ marginTop: '8px', textAlign: 'right' }}>
+              {/* Seller Actions for Draft */}
+              {isSeller && msg.is_ai_response && !msg.is_approved && (
+                  <div style={{ marginTop: '8px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button 
+                        onClick={() => handleReject(msg.id)}
+                        style={{ backgroundColor: '#f44336', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' }}
+                      >
+                          却下
+                      </button>
                       <button 
                         onClick={() => handleApprove(msg.id)}
                         style={{ backgroundColor: '#4caf50', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' }}
                       >
-                          承認して送信
+                          {msg.suggested_price ? `承認して価格を¥${msg.suggested_price.toLocaleString()}に変更` : '承認して送信'}
                       </button>
                   </div>
               )}
-            </div>
+              </div>
           </div>
         ))}
         {messages.length === 0 && <p style={{color: '#999'}}>まだメッセージはありません。</p>}
@@ -233,10 +268,17 @@ const ChatSection = ({ itemId, userId, isSeller }: { itemId: string, userId: str
         <textarea 
           value={inputText} 
           onChange={e => setInputText(e.target.value)} 
-          placeholder="質問や希望価格を入力してください..."
+          placeholder={userId ? "質問や希望価格を入力してください..." : "ログインが必要です"}
+          disabled={!userId}
           style={{ flex: 1, padding: '8px', minHeight: '40px', resize: 'vertical' }}
         />
-        <button onClick={handleSend} style={{ marginLeft: '8px', padding: '0 20px' }}>送信</button>
+        <button 
+            onClick={handleSend} 
+            style={{ marginLeft: '8px', padding: '0 20px' }}
+            disabled={!userId}
+        >
+            送信
+        </button>
       </div>
     </div>
   );

@@ -9,7 +9,10 @@ type Props = {
 export const ItemCard = ({ item }: Props) => {
   return (
     <div className="item-card">
-      <Link to={`/items/${item.id}`} className="item-card-link">
+      <Link to={`/items/${item.id}`} className="item-card-link" style={{position: 'relative'}}>
+        {item.status === 'sold' && (
+             <div className="ribbon"><span>SOLD</span></div>
+        )}
         {item.image_url ? (
             <div className="item-card-image-container">
                 <img src={item.image_url} alt={item.name} className="item-card-image" />

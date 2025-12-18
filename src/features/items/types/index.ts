@@ -23,4 +23,5 @@ export type Message = {
   is_approved: boolean;
   created_at: string;
   ai_reasoning?: string;
+  suggested_price?: number;
 };
