@@ -7,7 +7,8 @@ import './SellItemForm.css';
 const API_HOST = API_URL;
 
 export const SellItemForm = () => {
-  const { userId } = useAuth();
+  const { user } = useAuth();
+  const userId = user?.uid;
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');

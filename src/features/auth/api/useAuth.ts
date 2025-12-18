@@ -1,52 +1,106 @@
 import { useState, useEffect } from 'react';
+import { 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from 'firebase/auth';
+import type { User } from 'firebase/auth';
+import { fireAuth } from '../../../firebase';
 import { API_URL } from '../../../config';
 
 const API_HOST = API_URL;
 
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-};
-
 export const useAuth = () => {
-  const [userId, setUserId] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const storedId = localStorage.getItem('hackathon_user_id');
-    if (storedId) {
-      setUserId(storedId);
-    }
-  }, []);
-
-  const register = async (name: string, email: string) => {
+  const syncWithBackend = async (currentUser: User) => {
     try {
-      const response = await fetch(`${API_HOST}/register`, {
+      await fetch(`${API_HOST}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({
+          id: currentUser.uid,
+          name: currentUser.displayName || currentUser.email?.split('@')[0] || 'No Name',
+          email: currentUser.email || 'no-email@example.com',
+        }),
       });
-      
-      if (!response.ok) {
-        throw new Error('Registration failed');
-      }
-
-      const user: User = await response.json();
-      localStorage.setItem('hackathon_user_id', user.id);
-      setUserId(user.id);
-      return user;
     } catch (error) {
-      console.error(error);
+      console.error('Failed to sync user with backend:', error);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(fireAuth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+          await syncWithBackend(currentUser);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(fireAuth, provider);
+    } catch (error) {
+      console.error("Login failed", error);
       throw error;
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('hackathon_user_id');
-    setUserId(null);
+  const registerWithEmail = async (email: string, pass: string, name?: string) => {
+    try {
+        const userCredential = await createUserWithEmailAndPassword(fireAuth, email, pass);
+        // Update Profile if name is provided
+        if (name) {
+            // @ts-ignore
+            await import('firebase/auth').then(({ updateProfile }) => updateProfile(userCredential.user, { displayName: name }));
+            // Force sync with backend immediately with the new name
+            await syncWithBackend({ ...userCredential.user, displayName: name });
+        }
+    } catch (error) {
+        console.error("Registration failed", error);
+        throw error;
+    }
   };
 
-  return { userId, register, logout };
+  const loginWithEmail = async (email: string, pass: string) => {
+    try {
+        await signInWithEmailAndPassword(fireAuth, email, pass);
+    } catch (error) {
+        console.error("Login failed", error);
+        throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(fireAuth);
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
+
+  const getToken = async () => {
+    if (!user) return null;
+    return await user.getIdToken();
+  };
+
+  return { 
+      user, 
+      loading, 
+      loginWithGoogle, 
+      registerWithEmail,
+      loginWithEmail,
+      logout, 
+      getToken 
+  };
 };

@@ -6,7 +6,7 @@ import './HomePage.css';
 
 export const HomePage = () => {
   const { items, isLoading, error } = useItems();
-  const { userId, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   if (isLoading) return <div className="loading">Loading...</div>;
@@ -17,7 +17,7 @@ export const HomePage = () => {
       <header className="home-header">
         <h1>Merchackathon</h1>
         <div className="header-actions">
-          {userId ? (
+          {user ? (
             <>
               <button className="sell-button" onClick={() => navigate('/sell')}>出品する</button>
               <button className="logout-button" onClick={logout}>Logout</button>

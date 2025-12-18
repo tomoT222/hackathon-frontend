@@ -12,7 +12,8 @@ export const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();
   // @ts-ignore
   const { item, isLoading, error } = useItem(id);
-  const { userId } = useAuth();
+  const { user } = useAuth();
+  const userId = user?.uid || null;
   const navigate = useNavigate();
 
   const handlePurchase = async () => {
