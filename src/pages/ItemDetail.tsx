@@ -68,6 +68,14 @@ export const ItemDetail = () => {
 
   return (
     <div className="item-detail-page">
+      {/* DEBUG INFO: Remove before final release */}
+      <div style={{background: '#f0f0f0', padding: '10px', fontSize: '12px', color: '#333'}}>
+          <p>Debug Info:</p>
+          <p>My UID: {userId || 'Not Logged In'}</p>
+          <p>Item Seller ID: {item.user_id}</p>
+          <p>Is Seller?: {isSeller ? 'YES' : 'NO'}</p>
+      </div>
+
       <Link to="/" className="back-link">← Back to Home</Link>
       <div className="item-detail-container">
         <div className="item-image-placeholder">No Image</div>
