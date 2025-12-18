@@ -43,7 +43,7 @@ export const LoginPage = () => {
   return (
     <div style={{ maxWidth: '400px', margin: '40px auto', padding: '24px', textAlign: 'center', fontFamily: 'sans-serif' }}>
       <h1>{isRegister ? 'アカウント登録' : 'ログイン'}</h1>
-      <p style={{marginBottom: '20px', color: '#666'}}>Please login to continue</p>
+      <p style={{marginBottom: '20px', color: '#666'}}>続けるにはログインしてください</p>
       
       {error && <div style={{color: 'red', marginBottom: '16px', padding: '10px', backgroundColor: '#ffebee'}}>{error}</div>}
 
@@ -52,7 +52,7 @@ export const LoginPage = () => {
           {isRegister && (
             <input 
                 type="text" 
-                placeholder="User Name" 
+                placeholder="ユーザー名 (表示名)" 
                 value={name}
                 onChange={e => setName(e.target.value)}
                 required
@@ -61,7 +61,7 @@ export const LoginPage = () => {
           )}
           <input 
             type="email" 
-            placeholder="Email" 
+            placeholder="メールアドレス" 
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
@@ -69,7 +69,7 @@ export const LoginPage = () => {
           />
           <input 
             type="password" 
-            placeholder="Password" 
+            placeholder="パスワード" 
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
@@ -120,7 +120,7 @@ export const LoginPage = () => {
           gap: '10px'
         }}
       >
-        <span style={{fontWeight: 'bold'}}>G</span> Sign in with Google
+        <span style={{fontWeight: 'bold'}}>G</span> Googleでログイン
       </button>
     </div>
   );

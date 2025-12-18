@@ -10,6 +10,7 @@ export type Item = {
   views_count: number;
   ai_negotiation_enabled: boolean;
   min_price?: number;
+  image_url?: string;
   created_at: string;
 };
 

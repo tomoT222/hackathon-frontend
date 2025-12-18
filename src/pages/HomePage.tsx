@@ -19,11 +19,14 @@ export const HomePage = () => {
         <div className="header-actions">
           {user ? (
             <>
+              <span style={{ marginRight: '15px', fontWeight: 'bold', fontSize: '0.9em' }}>
+                {user.displayName || user.email} さま
+              </span>
               <button className="sell-button" onClick={() => navigate('/sell')}>出品する</button>
-              <button className="logout-button" onClick={logout}>Logout</button>
+              <button className="logout-button" onClick={logout}>ログアウト</button>
             </>
           ) : (
-            <button className="login-button" onClick={() => navigate('/login')}>Login / Register</button>
+            <button className="login-button" onClick={() => navigate('/login')}>ログイン / 登録</button>
           )}
         </div>
       </header>

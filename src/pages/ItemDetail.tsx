@@ -18,11 +18,11 @@ export const ItemDetail = () => {
 
   const handlePurchase = async () => {
     if (!userId) {
-      alert('Please login to purchase');
+      alert('購入するにはログインしてください');
       navigate('/login');
       return;
     }
-    if (!confirm('Are you sure you want to purchase this item?')) return;
+    if (!confirm('本当に購入しますか？')) return;
 
     try {
       const response = await fetch(`${API_HOST}/items/${id}/buy`, {
@@ -37,26 +37,26 @@ export const ItemDetail = () => {
         throw new Error('Purchase failed');
       }
 
-      alert('Purchase successful!');
+      alert('購入しました！');
       navigate('/');
     } catch (error) {
       console.error(error);
-      alert('Failed to purchase item');
+      alert('購入に失敗しました');
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
+    if (!confirm('本当に削除しますか？')) return;
     try {
         const response = await fetch(`${API_HOST}/items/${id}?user_id=${userId}`, {
             method: 'DELETE',
         });
         if (!response.ok) throw new Error('Delete failed');
-        alert('Item deleted');
+        alert('商品を削除しました');
         navigate('/');
     } catch (error) {
         console.error(error);
-        alert('Failed to delete item');
+        alert('削除に失敗しました');
     }
   };
 
@@ -68,20 +68,26 @@ export const ItemDetail = () => {
 
   return (
     <div className="item-detail-page">
-      <Link to="/" className="back-link">← Back to Home</Link>
+      <Link to="/" className="back-link">← ホームに戻る</Link>
       <div className="item-detail-container">
-        <div className="item-image-placeholder">No Image</div>
+        {item.image_url ? (
+             <div className="item-image-container-detail">
+                 <img src={item.image_url} alt={item.name} className="item-detail-image" />
+             </div>
+        ) : (
+             <div className="item-image-placeholder">画像なし</div>
+        )}
         <div className="item-info">
           <h1 className="item-title">{item.name}</h1>
           <p className="item-price">¥{item.price.toLocaleString()}</p>
           <div className="item-meta">
-            <span>Views: {item.views_count}</span>
+            <span>閲覧数: {item.views_count}</span>
             <span style={{ marginLeft: '10px', color: '#666' }}>
-               {item.ai_negotiation_enabled ? '🤖 Smart-Nego Enabled' : ''}
+               {item.ai_negotiation_enabled ? '🤖 AI価格交渉 対応' : ''}
             </span>
           </div>
           <div className="item-description">
-            <h3>Description</h3>
+            <h3>商品説明</h3>
             <p>{item.description}</p>
           </div>
           
@@ -173,7 +179,7 @@ const ChatSection = ({ itemId, userId, isSeller }: { itemId: string, userId: str
 
   return (
     <div className="chat-section" style={{ marginTop: '40px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
-      <h3>Smart-Nego Chat {isSeller && <span style={{fontSize: '0.8em', color: 'green'}}>(Seller Mode)</span>}</h3>
+      <h3>AI価格交渉チャット {isSeller && <span style={{fontSize: '0.8em', color: 'green'}}>(出品者モード)</span>}</h3>
       <div className="messages-list" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #ddd', padding: '10px', marginBottom: '10px' }}>
         {messages.map(msg => (
           <div key={msg.id} style={{ 
@@ -192,7 +198,7 @@ const ChatSection = ({ itemId, userId, isSeller }: { itemId: string, userId: str
             }}>
               {msg.is_ai_response && (
                   <div style={{fontSize: '0.8em', color: msg.is_approved ? '#2196f3' : '#ff9800', fontWeight: 'bold', marginBottom: '4px'}}>
-                      {msg.is_approved ? '🤖 AI Agent (Approved)' : '🤖 AI Agent (Draft)'}
+                      {msg.is_approved ? '🤖 AIエージェント (承認済み)' : '🤖 AIエージェント (下書き)'}
                   </div>
               )}
               
@@ -201,7 +207,7 @@ const ChatSection = ({ itemId, userId, isSeller }: { itemId: string, userId: str
               {/* Show Reasoning for Seller */}
               {isSeller && msg.ai_reasoning && (
                   <div style={{ marginTop: '8px', padding: '6px', backgroundColor: 'rgba(0,0,0,0.05)', fontSize: '0.85em', borderRadius: '4px', borderLeft: '3px solid #999' }}>
-                      <strong>AI Reasoning:</strong><br/>
+                      <strong>AIの思考プロセス:</strong><br/>
                       {msg.ai_reasoning}
                   </div>
               )}
@@ -213,24 +219,24 @@ const ChatSection = ({ itemId, userId, isSeller }: { itemId: string, userId: str
                         onClick={() => handleApprove(msg.id)}
                         style={{ backgroundColor: '#4caf50', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' }}
                       >
-                          承認する (Approve)
+                          承認して送信
                       </button>
                   </div>
               )}
             </div>
           </div>
         ))}
-        {messages.length === 0 && <p style={{color: '#999'}}>No messages yet.</p>}
+        {messages.length === 0 && <p style={{color: '#999'}}>まだメッセージはありません。</p>}
       </div>
       
       <div className="chat-input" style={{ display: 'flex' }}>
         <textarea 
           value={inputText} 
           onChange={e => setInputText(e.target.value)} 
-          placeholder="Ask a question or negotiate price..."
+          placeholder="質問や希望価格を入力してください..."
           style={{ flex: 1, padding: '8px', minHeight: '40px', resize: 'vertical' }}
         />
-        <button onClick={handleSend} style={{ marginLeft: '8px', padding: '0 20px' }}>Send</button>
+        <button onClick={handleSend} style={{ marginLeft: '8px', padding: '0 20px' }}>送信</button>
       </div>
     </div>
   );
