@@ -16,7 +16,55 @@ export const ItemDetail = () => {
   const userId = user?.uid || null;
   const navigate = useNavigate();
 
-  // ... (existing handlers)
+  const handlePurchase = async () => {
+    if (!userId) {
+      alert('購入するにはログインしてください');
+      navigate('/login');
+      return;
+    }
+    if (!confirm('本当に購入しますか？')) return;
+
+    try {
+      const response = await fetch(`${API_HOST}/items/${id}/buy`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Purchase failed');
+      }
+
+      alert('購入しました！');
+      navigate('/');
+    } catch (error) {
+      console.error(error);
+      alert('購入に失敗しました');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('本当に削除しますか？')) return;
+    try {
+        const response = await fetch(`${API_HOST}/items/${id}?user_id=${userId}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Delete failed');
+        alert('商品を削除しました');
+        navigate('/');
+    } catch (error) {
+        console.error(error);
+        alert('削除に失敗しました');
+    }
+  };
+
+  if (isLoading) return <div className="loading">Loading...</div>;
+  if (error) return <div className="error">Failed to load item info.</div>;
+  if (!item) return <div className="error">Item not found</div>;
+
+  const isSeller = userId === item.user_id;
 
   return (
     <div className="item-detail-page">
