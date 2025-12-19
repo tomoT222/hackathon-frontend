@@ -125,18 +125,20 @@ export const ItemDetail = () => {
         userId={userId} 
         isSeller={isSeller} 
         onItemUpdate={() => mutate()}
+        currentPrice={item.price}
       />
     </div>
   );
 };
 
 // Update ChatSection props signature
-const ChatSection = ({ itemId, userId, isSeller, onItemUpdate }: { itemId: string, userId: string | null, isSeller: boolean, onItemUpdate?: () => void }) => {
+const ChatSection = ({ itemId, userId, isSeller, onItemUpdate, currentPrice }: { itemId: string, userId: string | null, isSeller: boolean, onItemUpdate?: () => void, currentPrice: number }) => {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [inputText, setInputText] = React.useState('');
-  
+  const [retryInput, setRetryInput] = React.useState('');
+  const [retryTargetId, setRetryTargetId] = React.useState<string | null>(null);
+
   const fetchMessages = React.useCallback(() => {
-     // Pass user_id for filtering
      const url = userId ? `${API_HOST}/items/${itemId}/messages?user_id=${userId}` : `${API_HOST}/items/${itemId}/messages`;
      fetch(url)
       .then(res => res.json())
@@ -148,7 +150,7 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate }: { itemId: strin
 
   React.useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 3000); // Poll every 3 seconds
+    const interval = setInterval(fetchMessages, 3000); 
     return () => clearInterval(interval);
   }, [fetchMessages]);
 
@@ -167,6 +169,26 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate }: { itemId: strin
     }
   };
 
+  const handleRetry = async (instruction: string) => {
+      if (!userId) return;
+      try {
+          const res = await fetch(`${API_HOST}/items/${itemId}/messages/retry`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id: userId, instruction: instruction })
+          });
+          if (res.ok) {
+              setRetryTargetId(null);
+              setRetryInput('');
+              fetchMessages();
+          } else {
+              alert('Retry failed');
+          }
+      } catch (e) {
+          console.error(e);
+      }
+  };
+
   const handleApprove = async (msgId: string) => {
       if (!userId) return;
       try {
@@ -176,8 +198,8 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate }: { itemId: strin
               body: JSON.stringify({ user_id: userId })
           });
           if (res.ok) {
-              fetchMessages(); // Refresh messages to see approved status
-              if (onItemUpdate) onItemUpdate(); // Refresh item to see new price
+              fetchMessages(); 
+              if (onItemUpdate) onItemUpdate(); 
           }
       } catch (e) {
           console.error(e);
@@ -194,7 +216,7 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate }: { itemId: strin
             body: JSON.stringify({ user_id: userId })
         });
         if (res.ok) {
-            fetchMessages(); // Refresh to see update
+            fetchMessages(); 
         }
     } catch (e) {
         console.error(e);
@@ -207,11 +229,15 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate }: { itemId: strin
       {!userId && <div style={{padding: '10px', backgroundColor: '#f0f0f0', marginBottom: '10px', borderRadius: '4px'}}>チャット機能を利用するにはログインしてください。</div>}
       
       <div className="messages-list" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #ddd', padding: '10px', marginBottom: '10px' }}>
-        {messages.map(msg => (
+        {messages.map(msg => {
+            const isPriceChange = msg.suggested_price && msg.suggested_price !== currentPrice;
+            const isDraft = msg.is_ai_response && !msg.is_approved;
+
+            return (
           <div key={msg.id} style={{ 
             marginBottom: '10px', 
             textAlign: (userId && msg.sender_id === userId) ? 'right' : 'left',
-            backgroundColor: msg.is_ai_response && !msg.is_approved ? '#FFF3E0' : 'transparent',
+            backgroundColor: isDraft ? '#FFF3E0' : 'transparent',
             padding: '5px'
           }}>
               <div style={{ 
@@ -219,7 +245,8 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate }: { itemId: strin
                 padding: '8px 12px', 
                 borderRadius: '12px', 
                 backgroundColor: (userId && msg.sender_id === userId) ? '#e3f2fd' : '#f5f5f5',
-                maxWidth: '80%'
+                maxWidth: '80%',
+                textAlign: 'left'
               }}>
               {msg.is_ai_response && (
                   <div style={{fontSize: '0.8em', color: msg.is_approved ? '#2196f3' : '#ff9800', fontWeight: 'bold', marginBottom: '4px'}}>
@@ -227,7 +254,7 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate }: { itemId: strin
                   </div>
               )}
               
-              {msg.content}
+              <div style={{whiteSpace: 'pre-wrap'}}>{msg.content}</div>
               
               {/* Show Reasoning for Seller */}
               {isSeller && msg.ai_reasoning && (
@@ -238,25 +265,51 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate }: { itemId: strin
               )}
 
               {/* Seller Actions for Draft */}
-              {isSeller && msg.is_ai_response && !msg.is_approved && (
-                  <div style={{ marginTop: '8px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button 
-                        onClick={() => handleReject(msg.id)}
-                        style={{ backgroundColor: '#f44336', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' }}
-                      >
-                          却下
-                      </button>
-                      <button 
-                        onClick={() => handleApprove(msg.id)}
-                        style={{ backgroundColor: '#4caf50', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' }}
-                      >
-                          {msg.suggested_price ? `承認して価格を¥${msg.suggested_price.toLocaleString()}に変更` : '承認して送信'}
-                      </button>
+              {isSeller && isDraft && (
+                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button 
+                            onClick={() => handleReject(msg.id)}
+                            style={{ backgroundColor: '#f44336', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' }}
+                        >
+                            却下
+                        </button>
+                        <button 
+                            onClick={() => setRetryTargetId(retryTargetId === msg.id ? null : msg.id)}
+                            style={{ backgroundColor: '#ff9800', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' }}
+                        >
+                            再指示する...
+                        </button>
+                        <button 
+                            onClick={() => handleApprove(msg.id)}
+                            style={{ backgroundColor: '#4caf50', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' }}
+                        >
+                            {isPriceChange ? `価格を¥${msg.suggested_price!.toLocaleString()}に変更して承認` : '承認する'}
+                        </button>
+                      </div>
+                      
+                      {retryTargetId === msg.id && (
+                          <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
+                              <input 
+                                type="text" 
+                                value={retryInput}
+                                onChange={(e) => setRetryInput(e.target.value)}
+                                placeholder="例: もっと高く粘って、もっと丁寧に..."
+                                style={{ flex: 1, padding: '5px' }}
+                              />
+                              <button 
+                                onClick={() => handleRetry(retryInput)}
+                                style={{ backgroundColor: '#ff9800', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                              >
+                                  Go
+                              </button>
+                          </div>
+                      )}
                   </div>
               )}
               </div>
           </div>
-        ))}
+        )})}
         {messages.length === 0 && <p style={{color: '#999'}}>まだメッセージはありません。</p>}
       </div>
       
