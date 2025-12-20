@@ -6,6 +6,7 @@ import { API_URL } from '../config';
 import type { Message } from '../features/items/types';
 import { UserIcon } from '../features/auth/components/UserIcon';
 import { Modal } from '../components/ui/Modal';
+import { useSWRConfig } from 'swr';
 import './ItemDetail.css';
 
 const API_HOST = API_URL;
@@ -17,13 +18,14 @@ export const ItemDetail = () => {
   const { user } = useAuth();
   const userId = user?.uid || null;
   const navigate = useNavigate();
+  const { mutate: globalMutate } = useSWRConfig();
   
   const [modalConfig, setModalConfig] = React.useState<{
     isOpen: boolean;
     title: string;
     message: string;
     type: 'info' | 'confirm' | 'error';
-    onConfirm?: () => void;
+    onConfirm?: () => Promise<boolean | void> | void;
   }>({
     isOpen: false,
     title: '',
@@ -31,14 +33,22 @@ export const ItemDetail = () => {
     type: 'info',
   });
 
-  const showModal = (title: string, message: string, type: 'info' | 'confirm' | 'error' = 'info', onConfirm?: () => void) => {
+  const showModal = (
+      title: string, 
+      message: string, 
+      type: 'info' | 'confirm' | 'error' = 'info', 
+      onConfirm?: () => Promise<boolean | void> | void
+  ) => {
     setModalConfig({ 
         isOpen: true, 
         title, 
         message, 
         type, 
         onConfirm: async () => {
-            if (onConfirm) await onConfirm();
+            if (onConfirm) {
+                const shouldKeepOpen = await onConfirm();
+                if (shouldKeepOpen === true) return;
+            }
             closeModal();
         }
     });
@@ -69,9 +79,11 @@ export const ItemDetail = () => {
           }
     
           showModal('購入完了', '購入しました！', 'info', () => navigate('/'));
+          return true; // Keep open (show success modal)
         } catch (error) {
           console.error(error);
           showModal('購入エラー', '購入に失敗しました', 'error');
+          return true; // Keep open
         }
     });
   };
@@ -79,14 +91,35 @@ export const ItemDetail = () => {
   const handleDelete = async () => {
     showModal('削除確認', '本当に削除しますか？', 'confirm', async () => {
         try {
+            console.log('Deleting item...');
             const response = await fetch(`${API_HOST}/items/${id}?user_id=${userId}`, {
                 method: 'DELETE',
             });
             if (!response.ok) throw new Error('Delete failed');
-            showModal('削除完了', '商品を削除しました', 'info', () => navigate('/'));
+            
+            console.log('Mutating cache...');
+            // Manually update cache to remove deleted item
+            await globalMutate(
+                `${API_HOST}/items`,
+                (currentItems: any[] | undefined) => {
+                    const newItems = currentItems ? currentItems.filter((i: any) => i.id !== id) : [];
+                    console.log('New items count:', newItems.length);
+                    return newItems;
+                },
+                { revalidate: false } // Do not revalidate immediately to avoid 404 race? Actually revalidate: false is safer if we trust manual update.
+            );
+            
+            console.log('Showing success modal...');
+            showModal('削除完了', '商品を削除しました', 'info', () => {
+                console.log('Navigating home...');
+                // Force reload to ensure cache is cleared and navigation happens
+                window.location.href = '/';
+            });
+            return true; // Keep open (show success modal)
         } catch (error) {
             console.error(error);
             showModal('削除エラー', '削除に失敗しました', 'error');
+            return true; // Keep open
         }
     });
   };
@@ -124,16 +157,16 @@ export const ItemDetail = () => {
           </div>
           
           {isSeller ? (
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px', width: '100%' }}>
                   <button 
                     onClick={() => navigate(`/items/${item.id}/edit`)}
-                    style={{ backgroundColor: '#2196f3', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    style={{ backgroundColor: '#2196f3', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer', flex: 1 }}
                   >
                       編集する
                   </button>
                   <button 
                     onClick={handleDelete}
-                    style={{ backgroundColor: '#ff4444', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    style={{ backgroundColor: '#ff4444', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer', flex: 1 }}
                     disabled={item.status !== 'on_sale'}
                   >
                       削除する
