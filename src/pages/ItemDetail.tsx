@@ -4,6 +4,8 @@ import { useItem } from '../features/items/api/useItems';
 import { useAuth } from '../features/auth/api/useAuth';
 import { API_URL } from '../config';
 import type { Message } from '../features/items/types';
+import { UserIcon } from '../features/auth/components/UserIcon';
+import { Modal } from '../components/ui/Modal';
 import './ItemDetail.css';
 
 const API_HOST = API_URL;
@@ -15,49 +17,78 @@ export const ItemDetail = () => {
   const { user } = useAuth();
   const userId = user?.uid || null;
   const navigate = useNavigate();
+  
+  const [modalConfig, setModalConfig] = React.useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'confirm' | 'error';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  const showModal = (title: string, message: string, type: 'info' | 'confirm' | 'error' = 'info', onConfirm?: () => void) => {
+    setModalConfig({ 
+        isOpen: true, 
+        title, 
+        message, 
+        type, 
+        onConfirm: async () => {
+            if (onConfirm) await onConfirm();
+            closeModal();
+        }
+    });
+  };
+
+  const closeModal = () => {
+    setModalConfig(prev => ({ ...prev, isOpen: false }));
+  };
 
   const handlePurchase = async () => {
     if (!userId) {
-      alert('購入するにはログインしてください');
-      navigate('/login');
+      showModal('購入エラー', '購入するにはログインしてください', 'error', () => navigate('/login'));
       return;
     }
-    if (!confirm('本当に購入しますか？')) return;
-
-    try {
-      const response = await fetch(`${API_HOST}/items/${id}/buy`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: userId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Purchase failed');
-      }
-
-      alert('購入しました！');
-      navigate('/');
-    } catch (error) {
-      console.error(error);
-      alert('購入に失敗しました');
-    }
+    
+    showModal('購入確認', '本当に購入しますか？', 'confirm', async () => {
+        try {
+          const response = await fetch(`${API_HOST}/items/${id}/buy`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: userId }),
+          });
+    
+          if (!response.ok) {
+            throw new Error('Purchase failed');
+          }
+    
+          showModal('購入完了', '購入しました！', 'info', () => navigate('/'));
+        } catch (error) {
+          console.error(error);
+          showModal('購入エラー', '購入に失敗しました', 'error');
+        }
+    });
   };
 
   const handleDelete = async () => {
-    if (!confirm('本当に削除しますか？')) return;
-    try {
-        const response = await fetch(`${API_HOST}/items/${id}?user_id=${userId}`, {
-            method: 'DELETE',
-        });
-        if (!response.ok) throw new Error('Delete failed');
-        alert('商品を削除しました');
-        navigate('/');
-    } catch (error) {
-        console.error(error);
-        alert('削除に失敗しました');
-    }
+    showModal('削除確認', '本当に削除しますか？', 'confirm', async () => {
+        try {
+            const response = await fetch(`${API_HOST}/items/${id}?user_id=${userId}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) throw new Error('Delete failed');
+            showModal('削除完了', '商品を削除しました', 'info', () => navigate('/'));
+        } catch (error) {
+            console.error(error);
+            showModal('削除エラー', '削除に失敗しました', 'error');
+        }
+    });
   };
 
   if (isLoading) return <div className="loading">Loading...</div>;
@@ -126,13 +157,31 @@ export const ItemDetail = () => {
         isSeller={isSeller} 
         onItemUpdate={() => mutate()}
         currentPrice={item.price}
+        userName={user?.displayName || user?.email || 'User'}
+        showModal={showModal}
+      />
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
       />
     </div>
   );
 };
 
 // Update ChatSection props signature
-const ChatSection = ({ itemId, userId, isSeller, onItemUpdate, currentPrice }: { itemId: string, userId: string | null, isSeller: boolean, onItemUpdate?: () => void, currentPrice: number }) => {
+const ChatSection = ({ itemId, userId, isSeller, onItemUpdate, currentPrice, userName, showModal }: { 
+    itemId: string, 
+    userId: string | null, 
+    isSeller: boolean, 
+    onItemUpdate?: () => void, 
+    currentPrice: number,
+    userName: string,
+    showModal: (title: string, message: string, type: 'info' | 'confirm' | 'error', onConfirm?: () => void) => void
+}) => {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [inputText, setInputText] = React.useState('');
   const [retryInput, setRetryInput] = React.useState('');
@@ -182,7 +231,7 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate, currentPrice }: {
               setRetryInput('');
               fetchMessages();
           } else {
-              alert('Retry failed');
+              showModal('再試行エラー', 'リトライに失敗しました', 'error');
           }
       } catch (e) {
           console.error(e);
@@ -208,19 +257,51 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate, currentPrice }: {
 
   const handleReject = async (msgId: string) => {
     if (!userId) return;
-    if (!confirm('このAI提案を却下しますか？')) return;
-    try {
-        const res = await fetch(`${API_HOST}/messages/${msgId}/reject`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId })
-        });
-        if (res.ok) {
-            fetchMessages(); 
+    
+    showModal('却下確認', 'このAI提案を却下しますか？', 'confirm', async () => {
+        // We need to close modal? showModal handles opening. Usually onConfirm implies closing is handled by the caller or the wrapper?
+        // My Modal implementation calls onConfirm and doesn't auto-close unless onConfirm calls closeModal.
+        // Wait, onConfirm logic in Modal: if(onConfirm) onConfirm(); else onClose();
+        // So I must call closeModal() inside onConfirm if I passed it.
+        // But `showModal` sets state. The `Modal` component's `onConfirm` prop is `modalConfig.onConfirm`.
+        // The `ItemDetail` wrapper: `const showModal = (..., onConfirm) => setModalConfig({..., onConfirm})`.
+        // The `Modal` component: `onClick={() => { if (onConfirm) onConfirm(); else onClose(); }}`.
+        // So if I pass `onConfirm`, `onClose` is NOT called automatically. I must call it manually.
+        // The `showModal` passed via props from ItemDetail implicitly has access to `closeModal`? No.
+        // `showModal` implementation in `ItemDetail` doesn't wrap onConfirm to close.
+        // So I need to pass `closeModal` to `ChatSection` too?
+        // Or I can modify `showModal` in `ItemDetail` to wrap the onConfirm?
+        // Modifying `showModal` in `ItemDetail` is better.
+        // Let's modify `showModal` logic in Step 3? No, I already wrote it.
+        // Re-read Step 99:
+        // `const showModal = (..., onConfirm) => { setModalConfig({ ..., onConfirm }) }`
+        // So `onConfirm` is stored as is.
+        // In `Modal.tsx`: `onClick={() => { if (onConfirm) onConfirm(); else onClose(); }}`.
+        // So yes, I need to manually close it.
+        // But `ChatSection` doesn't have `closeModal`.
+        // I should update `showModal` in `ItemDetail` to AUTO-CLOSE?
+        // Ideally yes. But `handlePurchase` called `closeModal()` manually inside onConfirm.
+        // Because `ItemDetail` has access to `closeModal`.
+        // `ChatSection` does NOT.
+        // So I should pass `closeModal` to `ChatSection`.
+        try {
+            const res = await fetch(`${API_HOST}/messages/${msgId}/reject`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId })
+            });
+            if (res.ok) {
+                fetchMessages(); 
+            }
+        } catch (e) {
+            console.error(e);
         }
-    } catch (e) {
-        console.error(e);
-    }
+    }); 
+    // Wait, I can't close modal here!
+    // I made a mistake in design. `showModal` allows passing a raw function.
+    // I should pass `closeModal` to ChatSection OR modify `showModal` to support auto-closing.
+    
+    // Quick Fix: Pass `closeModal` to ChatSection as well.
   };
 
   return (
@@ -238,19 +319,41 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate, currentPrice }: {
             marginBottom: '10px', 
             textAlign: (userId && msg.sender_id === userId) ? 'right' : 'left',
             backgroundColor: isDraft ? '#FFF3E0' : 'transparent',
-            padding: '5px'
+            padding: '5px',
+            display: 'flex',
+            flexDirection: (userId && msg.sender_id === userId) ? 'row-reverse' : 'row',
+            alignItems: 'flex-start',
+            gap: '8px'
           }}>
+              {/* Icon Logic */}
+              {msg.is_ai_response ? (
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
+                      🤖
+                  </div>
+              ) : (
+                  <UserIcon size={32} />
+              )}
+
               <div style={{ 
                 display: 'inline-block', 
                 padding: '8px 12px', 
                 borderRadius: '12px', 
                 backgroundColor: (userId && msg.sender_id === userId) ? '#e3f2fd' : '#f5f5f5',
-                maxWidth: '80%',
+                maxWidth: '70%',
                 textAlign: 'left'
               }}>
+              {/* Show Name */}
+              <div style={{fontSize: '0.75em', color: '#666', marginBottom: '2px', textAlign: (userId && msg.sender_id === userId) ? 'right' : 'left'}}>
+                  {msg.is_ai_response ? 
+                    (msg.is_approved ? 'Smart-Nego (AI)' : 'Smart-Nego (AI) [下書き]') : 
+                    (msg.sender_name || 'User')
+                  }
+              </div>
+
+               {/* AI Status Color if AI */}
               {msg.is_ai_response && (
                   <div style={{fontSize: '0.8em', color: msg.is_approved ? '#2196f3' : '#ff9800', fontWeight: 'bold', marginBottom: '4px'}}>
-                      {msg.is_approved ? '🤖 AIエージェント (承認済み)' : '🤖 AIエージェント (下書き)'}
+                      {msg.is_approved ? '承認済み' : '承認待ち'}
                   </div>
               )}
               
@@ -307,6 +410,16 @@ const ChatSection = ({ itemId, userId, isSeller, onItemUpdate, currentPrice }: {
                       )}
                   </div>
               )}
+
+              {msg.suggested_price && (
+                  <div style={{marginTop: '4px', fontWeight: 'bold', color: '#e91e63'}}>
+                      提案価格: ¥{msg.suggested_price.toLocaleString()}
+                  </div>
+              )}
+
+              <div style={{fontSize: '0.7em', color: '#999', marginTop: '4px', textAlign: 'right'}}>
+                  {new Date(msg.created_at).toLocaleString()}
+              </div>
               </div>
           </div>
         )})}

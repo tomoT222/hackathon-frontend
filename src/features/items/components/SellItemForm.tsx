@@ -3,6 +3,7 @@ import { useAuth } from '../../auth/api/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../../../config';
 import type { Item } from '../../items/types';
+import { Modal } from '../../../components/ui/Modal';
 import './SellItemForm.css';
 
 const API_HOST = API_URL;
@@ -24,13 +25,44 @@ export const SellItemForm = ({ initialData }: Props) => {
   const [imageUrl, setImageUrl] = useState(initialData?.image_url || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'confirm' | 'error';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  const showModal = (title: string, message: string, type: 'info' | 'confirm' | 'error' = 'info', onConfirm?: () => void) => {
+    setModalConfig({ 
+        isOpen: true, 
+        title, 
+        message, 
+        type, 
+        onConfirm: async () => {
+            if (onConfirm) await onConfirm();
+            closeModal();
+        }
+    });
+  };
+
+  const closeModal = () => {
+    setModalConfig(prev => ({ ...prev, isOpen: false }));
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Simple size check (e.g. 5MB)
     if (file.size > 5 * 1024 * 1024) {
-        alert('ファイルサイズが大きすぎます (上限5MB)');
+        showModal('エラー', 'ファイルサイズが大きすぎます (上限5MB)', 'error');
         return;
     }
 
@@ -44,13 +76,13 @@ export const SellItemForm = ({ initialData }: Props) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) {
-      alert('出品するにはログインしてください');
+      showModal('エラー', '出品するにはログインしてください', 'error');
       return;
     }
 
     // Validation: MinPrice > Price
     if (aiNegotiationEnabled && minPrice && parseInt(minPrice) > parseInt(price)) {
-        alert('最低許容価格は販売価格以下に設定してください');
+        showModal('入力エラー', '最低許容価格は販売価格以下に設定してください', 'error');
         return;
     }
 
@@ -83,20 +115,24 @@ export const SellItemForm = ({ initialData }: Props) => {
         throw new Error('Failed to save item');
       }
 
-      navigate(initialData ? `/items/${initialData.id}` : '/');
+      showModal('完了', initialData ? '商品を更新しました' : '商品を出品しました', 'info', () => {
+          navigate(initialData ? `/items/${initialData.id}` : '/');
+      });
+      
     } catch (error) {
       console.error(error);
-      alert(initialData ? '更新に失敗しました' : '出品に失敗しました');
+      showModal('エラー', initialData ? '更新に失敗しました' : '出品に失敗しました', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (!userId) {
-    return <div>出品するにはログインしてください。</div>;
+    return <div style={{padding: '20px'}}>出品するにはログインしてください。</div>;
   }
 
   return (
+    <>
     <form className="sell-item-form" onSubmit={handleSubmit}>
       <div className="form-group">
         <label htmlFor="name">商品名</label>
@@ -180,5 +216,14 @@ export const SellItemForm = ({ initialData }: Props) => {
         {isSubmitting ? '送信中...' : (initialData ? '更新する' : '出品する')}
       </button>
     </form>
+    <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+    />
+    </>
   );
 };

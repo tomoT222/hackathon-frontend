@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useItems } from '../features/items/api/useItems';
 import { ItemCard } from '../features/items/components/ItemCard';
 import { useAuth } from '../features/auth/api/useAuth';
+import { UserIcon } from '../features/auth/components/UserIcon';
 import './HomePage.css';
 
 export const HomePage = () => {
@@ -15,13 +16,16 @@ export const HomePage = () => {
   return (
     <div className="home-page">
       <header className="home-header">
-        <h1>Merchackathon</h1>
+        <h1>Smart-Nego</h1>
         <div className="header-actions">
           {user ? (
             <>
-              <span style={{ marginRight: '15px', fontWeight: 'bold', fontSize: '0.9em' }}>
-                {user.displayName || user.email} さま
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', marginRight: '15px' }}>
+                <UserIcon size={32} />
+                <span style={{ marginLeft: '8px', fontWeight: 'bold', fontSize: '0.9em' }}>
+                  {user.displayName || user.email} さま
+                </span>
+              </div>
               <button className="sell-button" onClick={() => navigate('/sell')}>出品する</button>
               <button className="logout-button" onClick={logout}>ログアウト</button>
             </>

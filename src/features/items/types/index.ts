@@ -18,6 +18,7 @@ export type Message = {
   id: string;
   item_id: string;
   sender_id: string;
+  sender_name?: string;
   content: string;
   is_ai_response: boolean;
   is_approved: boolean;

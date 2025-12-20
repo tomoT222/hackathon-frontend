@@ -1,14 +1,15 @@
 import { useAuth } from '../features/auth/api/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { getJapaneseAuthErrorMessage } from '../features/auth/utils/firebaseErrors';
 
 export const LoginPage = () => {
   const { loginWithGoogle, loginWithEmail, registerWithEmail, user } = useAuth();
   const navigate = useNavigate();
+  const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [isRegister, setIsRegister] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -19,29 +20,35 @@ export const LoginPage = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      setError('');
       await loginWithGoogle();
-    } catch (error) {
-      setError('Google Login failed');
+    } catch (err: any) {
+      setError(getJapaneseAuthErrorMessage(err.code || ''));
     }
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setError('');
-      try {
-          if (isRegister) {
-              await registerWithEmail(email, password, name);
-          } else {
-              await loginWithEmail(email, password);
-          }
-      } catch (err: any) {
-          setError(err.message || 'Authentication failed');
+    e.preventDefault();
+    setError('');
+    try {
+      if (isRegister) {
+        if (!name) {
+             setError('ユーザー名を入力してください');
+             return;
+        }
+        await registerWithEmail(email, password, name);
+      } else {
+        await loginWithEmail(email, password);
       }
+    } catch (err: any) {
+      setError(getJapaneseAuthErrorMessage(err.code || ''));
+    }
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '40px auto', padding: '24px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+    <div style={{ maxWidth: '400px', margin: '40px auto', padding: '24px', textAlign: 'center', fontFamily: 'sans-serif', position: 'relative' }}>
+        <div style={{ textAlign: 'left', marginBottom: '20px' }}>
+            <Link to="/" style={{ textDecoration: 'none', color: '#666', fontSize: '14px' }}>← ホームに戻る</Link>
+        </div>
       <h1>{isRegister ? 'アカウント登録' : 'ログイン'}</h1>
       <p style={{marginBottom: '20px', color: '#666'}}>続けるにはログインしてください</p>
       
