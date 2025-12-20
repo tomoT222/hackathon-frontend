@@ -157,7 +157,6 @@ export const ItemDetail = () => {
         isSeller={isSeller} 
         onItemUpdate={() => mutate()}
         currentPrice={item.price}
-        userName={user?.displayName || user?.email || 'User'}
         showModal={showModal}
       />
       <Modal
@@ -173,13 +172,12 @@ export const ItemDetail = () => {
 };
 
 // Update ChatSection props signature
-const ChatSection = ({ itemId, userId, isSeller, onItemUpdate, currentPrice, userName, showModal }: { 
+const ChatSection = ({ itemId, userId, isSeller, onItemUpdate, currentPrice, showModal }: { 
     itemId: string, 
     userId: string | null, 
     isSeller: boolean, 
     onItemUpdate?: () => void, 
     currentPrice: number,
-    userName: string,
     showModal: (title: string, message: string, type: 'info' | 'confirm' | 'error', onConfirm?: () => void) => void
 }) => {
   const [messages, setMessages] = React.useState<Message[]>([]);
